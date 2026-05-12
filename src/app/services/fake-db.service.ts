@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class FakeDbService {
-  private readonly key = 'demo-items';
+  private readonly key = 'bookings';
 
   getAll<T>(): T[] {
     const raw = localStorage.getItem(this.key);
