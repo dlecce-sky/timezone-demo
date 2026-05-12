@@ -87,6 +87,10 @@ import { BookingDialogComponent } from './booking-dialog.component';
     .bookings {
       margin-top: 1rem;
 
+      h2 {
+        margin-bottom: 1rem;
+      }
+
       table {
         width: 100%;
       }

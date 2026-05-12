@@ -1,3 +1,5 @@
+import { FormControl } from '@angular/forms';
+
 export interface BookingJson {
   id: string;
   from: string;
@@ -20,3 +22,19 @@ export function toBooking(bookingJson: BookingJson): Booking {
     to: new Date(bookingJson.to),
   };
 }
+
+export interface BookingFormValue {
+  id: string | null | undefined;
+  from: Date | null | undefined;
+  to: Date | null | undefined;
+  timezone: string | null | undefined;
+  startTime: string | null | undefined;
+  duration: string | null | undefined;
+  days: string[] | null | undefined;
+}
+
+type ControlsOf<T> = {
+  [K in keyof T]: FormControl<T[K]>;
+};
+
+export type BookingFormControls = ControlsOf<BookingFormValue>;
