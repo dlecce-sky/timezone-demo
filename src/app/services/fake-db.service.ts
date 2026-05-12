@@ -1,30 +1,32 @@
 import { Injectable } from '@angular/core';
+import { Booking, BookingJson, toBooking } from '../models/booking.model';
 
 @Injectable({ providedIn: 'root' })
 export class FakeDbService {
   private readonly key = 'bookings';
 
-  getAll<T>(): T[] {
+  getAll(): Booking[] {
     const raw = localStorage.getItem(this.key);
-    return raw ? JSON.parse(raw) : [];
+    const items: BookingJson[] = raw ? JSON.parse(raw) : [];
+    return items.map(toBooking);
   }
 
-  saveAll<T>(items: T[]): void {
+  saveAll(items: Booking[]): void {
     localStorage.setItem(this.key, JSON.stringify(items));
   }
 
-  add<T extends { id: string }>(item: T): void {
-    const items = this.getAll<T>();
+  add(item: Booking): void {
+    const items = this.getAll();
     this.saveAll([...items, item]);
   }
 
-  update<T extends { id: string }>(item: T): void {
-    const items = this.getAll<T>();
+  update(item: Booking): void {
+    const items = this.getAll();
     this.saveAll(items.map((x) => (x.id === item.id ? item : x)));
   }
 
   delete(id: string): void {
-    const items = this.getAll<{ id: string }>();
+    const items = this.getAll();
     this.saveAll(items.filter((x) => x.id !== id));
   }
 
