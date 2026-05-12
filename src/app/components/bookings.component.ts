@@ -110,7 +110,9 @@ export class BookingsComponent {
   });
 
   readonly dialogSettings = {
-    minWidth: '1000px',
+    minWidth: '1100px',
+    minHeight: '600px',
+    autoFocus: 'dialog',
   };
 
   readonly dialog = inject(MatDialog);
