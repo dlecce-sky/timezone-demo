@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FakeDbService } from '../services/fake-db.service';
 import { Booking, BookingJson, toBooking } from '../models/booking.model';
 
@@ -13,6 +13,7 @@ import { Booking, BookingJson, toBooking } from '../models/booking.model';
     </ul>
   `,
   styles: ``,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BookingsComponent implements OnInit {
   readonly fakeDb = inject(FakeDbService);
