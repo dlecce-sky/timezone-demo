@@ -1,5 +1,6 @@
 import { addDays, addMinutes, addWeeks, startOfDay, startOfWeek } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { enGB } from 'date-fns/locale';
+import { formatInTimeZone, utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 import { BookingFormValue } from '../models/booking.model';
 
 export interface TimelineOccurrence {
@@ -94,15 +95,8 @@ export function listWeekTickValues(weekStartZoned: Date, timezone: string): Date
   });
 }
 
-export function formatTimelineDate(
-  date: Date,
-  timezone: string,
-  options: Intl.DateTimeFormatOptions,
-) {
-  return new Intl.DateTimeFormat('en-GB', {
-    ...options,
-    timeZone: timezone,
-  }).format(date);
+export function formatTimelineDate(date: Date, timezone: string, formatString: string) {
+  return formatInTimeZone(date, timezone, formatString, { locale: enGB });
 }
 
 export function clipOccurrenceToRange(

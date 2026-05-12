@@ -222,15 +222,11 @@ export class TimelinePreviewComponent implements AfterViewInit {
     const startUtc = zonedTimeToUtc(weekStart, state.timezone);
     const endUtc = zonedTimeToUtc(addDays(weekStart, 6), state.timezone);
 
-    return `${formatTimelineDate(startUtc, state.timezone, {
-      day: '2-digit',
-      month: 'short',
-      weekday: 'short',
-    })} - ${formatTimelineDate(endUtc, state.timezone, {
-      day: '2-digit',
-      month: 'short',
-      weekday: 'short',
-    })}`;
+    return `${formatTimelineDate(startUtc, state.timezone, 'EEE dd MMM')} - ${formatTimelineDate(
+      endUtc,
+      state.timezone,
+      'EEE dd MMM',
+    )}`;
   });
   readonly weekPositionLabel = computed(() => {
     const totalWeeks = this.timelineState()?.weekStarts.length ?? 0;
@@ -379,10 +375,7 @@ export class TimelinePreviewComponent implements AfterViewInit {
       .tickFormat((value) => {
         const tickDate = value instanceof Date ? value : new Date(value.valueOf());
 
-        return formatTimelineDate(tickDate, state.timezone, {
-          day: '2-digit',
-          weekday: 'short',
-        });
+        return formatTimelineDate(tickDate, state.timezone, 'EEE dd');
       });
 
     const axisGroup = svg.append('g').attr('transform', `translate(0, ${axisY})`);
@@ -470,11 +463,7 @@ export class TimelinePreviewComponent implements AfterViewInit {
     const label = `${args.kind === 'from' ? 'From' : 'To'} ${formatTimelineDate(
       boundaryDate,
       args.state.timezone,
-      {
-        hour: '2-digit',
-        hour12: false,
-        minute: '2-digit',
-      },
+      'HH:mm',
     )}`;
     const textAnchor = x < 72 ? 'start' : x > args.width - 72 ? 'end' : 'middle';
 

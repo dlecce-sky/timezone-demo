@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
   OnInit,
@@ -15,6 +16,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { DatetimePickerComponent, DatetimePickerToggleComponent } from '@sky-it-common/sky-ui';
+import { enGB } from 'date-fns/locale';
+import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz';
 import { TimelinePreviewComponent } from './timeline-preview.component';
 import { mapToUtcBooking } from '../utils/booking.utils';
 
@@ -44,12 +47,18 @@ import { mapToUtcBooking } from '../utils/booking.utils';
               <mat-label>From</mat-label>
               <sky-ui-datetime-picker #fromPicker [formControl]="form.controls.from" />
               <sky-ui-datetime-picker-toggle matSuffix [for]="fromPicker" />
+              @if (fromLocalHint(); as hint) {
+                <mat-hint>{{ hint }}</mat-hint>
+              }
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>To</mat-label>
               <sky-ui-datetime-picker #toPicker [formControl]="form.controls.to" />
               <sky-ui-datetime-picker-toggle matSuffix [for]="toPicker" />
+              @if (toLocalHint(); as hint) {
+                <mat-hint>{{ hint }}</mat-hint>
+              }
             </mat-form-field>
 
             <mat-form-field>
@@ -119,6 +128,7 @@ import { mapToUtcBooking } from '../utils/booking.utils';
   `,
 })
 export class BookingDialogComponent implements OnInit {
+  readonly browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   readonly booking = inject<Booking | null>(MAT_DIALOG_DATA);
   readonly dialogRef = inject(MatDialogRef<BookingDialogComponent>);
   readonly fb = inject(FormBuilder);
@@ -126,6 +136,18 @@ export class BookingDialogComponent implements OnInit {
 
   readonly form = signal<FormGroup<BookingFormControls> | undefined>(undefined);
   readonly previewValue = signal<BookingFormValue | null>(null);
+  readonly fromLocalHint = computed(() => {
+    const value = this.previewValue()?.from;
+    const timezone = this.previewValue()?.timezone;
+
+    return this.buildLocalTimezoneHint(value, timezone);
+  });
+  readonly toLocalHint = computed(() => {
+    const value = this.previewValue()?.to;
+    const timezone = this.previewValue()?.timezone;
+
+    return this.buildLocalTimezoneHint(value, timezone);
+  });
 
   ngOnInit(): void {
     const {
@@ -162,5 +184,26 @@ export class BookingDialogComponent implements OnInit {
       const utcBooking = mapToUtcBooking(form.getRawValue());
       this.dialogRef.close(utcBooking);
     }
+  }
+
+  private buildLocalTimezoneHint(
+    value: Date | null | undefined,
+    selectedTimezone: string | null | undefined,
+  ) {
+    if (
+      !selectedTimezone ||
+      selectedTimezone === this.browserTimezone ||
+      !(value instanceof Date) ||
+      Number.isNaN(value.getTime())
+    ) {
+      return null;
+    }
+
+    const utcValue = zonedTimeToUtc(value, selectedTimezone);
+    const formattedValue = formatInTimeZone(utcValue, this.browserTimezone, 'dd/MM/yyyy HH:mm', {
+      locale: enGB,
+    });
+
+    return `${formattedValue} in your local timezone (${this.browserTimezone})`;
   }
 }

@@ -110,7 +110,7 @@ export class BookingsComponent {
   });
 
   readonly dialogSettings = {
-    minWidth: '1100px',
+    minWidth: '1200px',
     minHeight: '600px',
     autoFocus: 'dialog',
   };

@@ -86,9 +86,5 @@ function createLocalDate(year: number, month: number, day: number, hours: number
 }
 
 function formatHourMinute(value: Date) {
-  return formatTimelineDate(value, 'Europe/Rome', {
-    hour: '2-digit',
-    hour12: false,
-    minute: '2-digit',
-  });
+  return formatTimelineDate(value, 'Europe/Rome', 'HH:mm');
 }
