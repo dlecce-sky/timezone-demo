@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Booking, BookingFormControls } from '../models/booking.model';
 import { MatButtonModule } from '@angular/material/button';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -88,17 +88,23 @@ import { DatetimePickerComponent, DatetimePickerToggleComponent } from '@sky-it-
       <button mat-button (click)="save()">Save</button>
     </mat-dialog-actions>
   `,
-  styles: ``,
+  styles: `
+    .row {
+      display: flex;
+      gap: 1rem;
+    }
+  `,
 })
 export class BookingDialogComponent implements OnInit {
   readonly booking = inject<Booking | null>(MAT_DIALOG_DATA);
+  readonly dialogRef = inject(MatDialogRef<BookingDialogComponent>);
   readonly fb = inject(FormBuilder);
 
   readonly form = signal<FormGroup<BookingFormControls> | undefined>(undefined);
 
   ngOnInit(): void {
     const {
-      id,
+      id = crypto.randomUUID(),
       from,
       to,
       timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -121,6 +127,7 @@ export class BookingDialogComponent implements OnInit {
   }
 
   save() {
-    // Implement save logic here
+    const booking = this.form()?.value;
+    this.dialogRef.close(booking);
   }
 }

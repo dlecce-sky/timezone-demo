@@ -6,10 +6,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { BookingDialogComponent } from './booking-dialog.component';
+import { BookingDaysPipe } from '../pipes/booking-days.pipe';
 
 @Component({
   selector: 'app-bookings',
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatTableModule],
+  imports: [DatePipe, MatButtonModule, MatIconModule, MatTableModule, BookingDaysPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button mat-raised-button (click)="addBooking()">Add Booking</button>
@@ -59,7 +60,7 @@ import { BookingDialogComponent } from './booking-dialog.component';
           <!-- Days Column -->
           <ng-container matColumnDef="days">
             <th mat-header-cell *matHeaderCellDef>Days</th>
-            <td mat-cell *matCellDef="let booking">{{ booking.days.join(', ') }}</td>
+            <td mat-cell *matCellDef="let booking">{{ booking.days | bookingDays }}</td>
           </ng-container>
 
           <!-- Actions Column -->
