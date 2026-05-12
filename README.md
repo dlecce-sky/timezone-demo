@@ -1,59 +1,375 @@
-# TimezoneDemo
+# Timezone Demo
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.1.
+Timezone Demo is a small Angular proof of concept that focuses on one specific problem: how to create, store, edit, preview, and render recurring bookings when the user works in a named IANA timezone such as `Europe/Rome` or `Asia/Kolkata`.
 
-## Development server
+The application lets a user:
 
-To start a local development server, run:
+- create bookings inside a dialog;
+- choose a timezone;
+- define recurring days, one or more start times, and a duration;
+- preview the recurrence on a weekly D3 timeline;
+- persist bookings in local storage and reopen them later without losing the intended local wall-clock meaning.
 
-```bash
-ng serve
+The core of the project is not the UI itself. The interesting part is the timezone strategy and how the code keeps local human meaning and absolute UTC instants aligned, including DST transitions.
+
+## Stack
+
+- Angular 19 standalone components
+- Angular Material for the dialog and form controls
+- D3.js for timeline rendering
+- `date-fns` and `date-fns-tz` for date arithmetic and timezone conversion
+- Karma + Jasmine for unit tests
+
+## Project Structure
+
+The most relevant files are:
+
+- [src/app/models/booking.model.ts](src/app/models/booking.model.ts): booking types and form value shape
+- [src/app/components/booking-dialog.component.ts](src/app/components/booking-dialog.component.ts): booking form inside `MatDialog`
+- [src/app/components/timeline-preview.component.ts](src/app/components/timeline-preview.component.ts): weekly D3 preview renderer
+- [src/app/utils/booking.utils.ts](src/app/utils/booking.utils.ts): conversion between local form values and UTC persisted values
+- [src/app/utils/timeline-preview.utils.ts](src/app/utils/timeline-preview.utils.ts): recurrence generation, weekly slicing, formatting helpers
+- [src/app/utils/booking.utils.spec.ts](src/app/utils/booking.utils.spec.ts): unit tests for timezone conversion
+- [src/app/utils/timeline-preview.utils.spec.ts](src/app/utils/timeline-preview.utils.spec.ts): unit tests for DST-sensitive recurrence behavior
+
+## Data Model
+
+The form works with this shape:
+
+```ts
+export interface BookingFormValue {
+	id: string | null | undefined;
+	from: Date | null | undefined;
+	to: Date | null | undefined;
+	timezone: string | null | undefined;
+	startTime: string | null | undefined;
+	duration: string | null | undefined;
+	days: string[] | null | undefined;
+}
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Meaning:
 
-## Code scaffolding
+- `from` and `to` define the full booking window;
+- `timezone` defines how those dates and recurrence times must be interpreted;
+- `startTime` defines one or more local clock times such as `09:00` or `09:00, 14:00`;
+- `duration` is a real duration such as `2h 30m`;
+- `days` defines recurring weekdays.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## How To Run
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Start the application:
 
 ```bash
-ng build
+npm install
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Build the application:
 
 ```bash
-ng test
+npm run build
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Lint the project:
 
 ```bash
-ng e2e
+npm run lint
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Unit Tests
 
-## Additional Resources
+Run the test suite with:
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```bash
+npm test
+```
+
+If you are on Linux, WSL, or a headless environment, Karma may fail because no Chrome binary is available. In that case, use a Chrome or Chromium binary explicitly:
+
+```bash
+export CHROME_BIN=$(command -v chromium || command -v chromium-browser || command -v google-chrome || command -v google-chrome-stable)
+npm test -- --watch=false --browsers=ChromeHeadless
+```
+
+If no path is returned, install Chrome or Chromium first.
+
+## The Timezone Strategy
+
+### Short Version
+
+The code follows a simple rule:
+
+1. The user thinks in local time.
+2. The application stores absolute boundaries in UTC.
+3. The application keeps the original timezone string.
+4. Recurrences are generated by rebuilding local occurrences in that timezone and only then converting them to UTC.
+5. Rendering uses UTC for positioning and the selected timezone for labels.
+
+This combination avoids the most common timezone bug: storing a local-looking date without remembering which timezone gave that date its meaning.
+
+### Why UTC Alone Is Not Enough
+
+Suppose a user says:
+
+- timezone: `Europe/Rome`
+- start time: `09:00`
+
+That does not mean one fixed UTC time all year long.
+
+In Rome:
+
+- `09:00` before summer time may be `08:00Z`
+- `09:00` after the DST switch may be `07:00Z`
+
+So if the application stored only one UTC hour and forgot the timezone, the booking would drift by one hour when DST changes.
+
+That is why the project stores both:
+
+- UTC boundaries for persistence and absolute comparison
+- the IANA timezone string for meaning and reconstruction
+
+### Step 1: Convert Form Boundaries To UTC When Saving
+
+The save step happens in [src/app/utils/booking.utils.ts](src/app/utils/booking.utils.ts).
+
+The key function is `mapToUtcBooking`.
+
+```ts
+from: zonedTimeToUtc(from, timezone),
+to: zonedTimeToUtc(to, timezone),
+```
+
+This means:
+
+- the `from` chosen by the user is interpreted as a local date/time in the selected timezone;
+- that local instant is converted to an absolute UTC instant before storage;
+- the same is done for `to`.
+
+This is the first critical idea: a `Date` coming from the form is not trusted as “already correct UTC”. It is reinterpreted through the selected timezone.
+
+### Step 2: Convert UTC Back To Zoned Dates When Editing
+
+When a saved booking is reopened, the code uses `mapToZonedBooking` in [src/app/utils/booking.utils.ts](src/app/utils/booking.utils.ts):
+
+```ts
+from: utcToZonedTime(booking.from, booking.timezone),
+to: utcToZonedTime(booking.to, booking.timezone),
+```
+
+This reconstructs the wall-clock values that the user expects to see in the form.
+
+Without this reverse step, a booking created in `Europe/Rome` could reopen with a shifted clock value depending on the machine timezone or DST state.
+
+## How Recurrences Are Generated
+
+The recurrence logic lives in [src/app/utils/timeline-preview.utils.ts](src/app/utils/timeline-preview.utils.ts).
+
+The main public entry point is `buildTimelinePreviewState`.
+
+### Step 1: Build The Absolute Range
+
+The code first converts the form boundaries into UTC:
+
+```ts
+const rangeStartUtc = zonedTimeToUtc(from, timezone);
+const rangeEndUtc = zonedTimeToUtc(to, timezone);
+```
+
+This creates the absolute range used for comparisons.
+
+### Step 2: Also Build A Zoned Version Of The Same Range
+
+The code immediately reconstructs zoned dates again:
+
+```ts
+const rangeStartZoned = utcToZonedTime(rangeStartUtc, timezone);
+const rangeEndZoned = utcToZonedTime(rangeEndUtc, timezone);
+```
+
+This may look redundant at first, but it is intentional.
+
+Why it matters:
+
+- UTC is correct for absolute comparisons;
+- zoned dates are correct for local calendar logic such as “Sunday at 09:00 in Europe/Rome”.
+
+This split is what keeps the logic readable and stable.
+
+### Step 3: Parse The Recurrence Inputs
+
+The utility then parses:
+
+- weekdays through `parseDays`
+- local times through `parseStartTimes`
+- duration through `parseDurationMinutes`
+
+This gives a clean internal representation before any recurrence is generated.
+
+### Step 4: Iterate Day By Day In Zoned Time
+
+The most important logic is inside `buildOccurrences` in [src/app/utils/timeline-preview.utils.ts](src/app/utils/timeline-preview.utils.ts).
+
+The loop walks day by day using the zoned range:
+
+```ts
+for (
+	let cursor = startOfDay(args.rangeStartZoned);
+	cursor.getTime() <= lastDay.getTime();
+	cursor = addDays(cursor, 1)
+)
+```
+
+This is a key design choice.
+
+The loop does not iterate UTC midnights. It iterates local calendar days in the selected timezone. That is exactly what users mean when they say things like “every Sunday at 09:00”.
+
+### Step 5: Build The Local Occurrence First, Then Convert It To UTC
+
+For each valid weekday, the code creates a local start:
+
+```ts
+const localStart = new Date(cursor);
+localStart.setHours(startTime.hours, startTime.minutes, 0, 0);
+
+const startUtc = zonedTimeToUtc(localStart, args.timezone);
+```
+
+This is the heart of the whole mechanism.
+
+The logic does not say “09:00 is always 08:00Z” or “09:00 is always 07:00Z”. Instead it says:
+
+- first create `09:00` on that local calendar day;
+- then ask the timezone rules for the correct UTC instant for that day.
+
+That is exactly why DST works.
+
+### Step 6: Apply Duration In UTC
+
+The end time is computed like this:
+
+```ts
+const endUtc = addMinutes(startUtc, args.durationMinutes);
+```
+
+This means duration is treated as a real elapsed duration, not as a naive “same wall-clock math” duration.
+
+That is the correct behavior for booking systems. A duration of `1h` always means 60 real minutes.
+
+### Step 7: Keep Only Occurrences Fully Inside The Booking Window
+
+The current logic intentionally excludes partial overlap:
+
+```ts
+if (startUtc.getTime() < args.rangeStartUtc.getTime()) {
+	continue;
+}
+
+if (endUtc.getTime() > args.rangeEndUtc.getTime()) {
+	continue;
+}
+```
+
+So the preview only includes occurrences fully contained in the overall `from -> to` range.
+
+This avoids visual artifacts where an event would appear clipped at the edges even though it really started before `from` or ended after `to`.
+
+## How Rendering Works
+
+The D3 renderer is in [src/app/components/timeline-preview.component.ts](src/app/components/timeline-preview.component.ts).
+
+The important idea is this:
+
+- positions are based on UTC instants
+- labels are formatted in the selected timezone
+
+The x scale is built from UTC values:
+
+```ts
+const xScale = d3
+	.scaleTime()
+	.domain([weekStartUtc, weekEndUtc])
+```
+
+This is the correct choice because a timeline is about real chronological order.
+
+But labels are formatted with `formatTimelineDate`, which applies the booking timezone:
+
+```ts
+formatTimelineDate(tickDate, state.timezone, {
+	day: '2-digit',
+	weekday: 'short',
+})
+```
+
+So the chart behaves like a real time axis, while still showing dates and times the way the user expects in their selected timezone.
+
+## DST Behavior Explained For Non-Experts
+
+### Case 1: Same Local Time, Different UTC Time
+
+If a booking repeats every Sunday at `09:00` in `Europe/Rome`, then:
+
+- before the spring DST change, `09:00` may be `08:00Z`
+- after the spring DST change, `09:00` may be `07:00Z`
+
+The user still sees `09:00`, which is correct.
+
+The UTC value changes, which is also correct.
+
+### Case 2: Crossing The Spring Forward Gap
+
+On the day when the clock jumps forward, some local times do not exist.
+
+Example:
+
+- start: `01:30`
+- duration: `1h`
+- timezone: `Europe/Rome`
+
+The real elapsed duration is still 60 minutes, so the event ends one real hour later. On the local clock that may look like `03:30`, because the `02:00-02:59` hour is skipped.
+
+This is not a bug. It is the correct real-time behavior.
+
+### Case 3: Crossing The Autumn Backward Shift
+
+When clocks move back, a local hour happens twice. The application still reconstructs each occurrence by local day and local time first, then converts through timezone rules.
+
+That keeps weekly local recurrence times stable even when the UTC mapping changes.
+
+## Unit Tests For Timezone And DST
+
+The most useful tests are:
+
+- [src/app/utils/booking.utils.spec.ts](src/app/utils/booking.utils.spec.ts): verifies conversion to UTC before and after DST, and round-trip reopening of saved bookings
+- [src/app/utils/timeline-preview.utils.spec.ts](src/app/utils/timeline-preview.utils.spec.ts): verifies recurring local times remain stable across DST and that a duration crossing the spring-forward gap behaves correctly
+
+These tests are important because timezone code often looks correct while still failing on DST boundaries.
+
+## Code Reading Guide
+
+If you want to understand the timezone logic quickly, read the files in this order:
+
+1. [src/app/models/booking.model.ts](src/app/models/booking.model.ts)
+2. [src/app/utils/booking.utils.ts](src/app/utils/booking.utils.ts)
+3. [src/app/utils/timeline-preview.utils.ts](src/app/utils/timeline-preview.utils.ts)
+4. [src/app/components/timeline-preview.component.ts](src/app/components/timeline-preview.component.ts)
+5. [src/app/utils/booking.utils.spec.ts](src/app/utils/booking.utils.spec.ts)
+6. [src/app/utils/timeline-preview.utils.spec.ts](src/app/utils/timeline-preview.utils.spec.ts)
+
+That order matches the actual data flow from form input, to persistence, to recurrence generation, to rendering, to verification.
+
+## Known Limits Of This Demo
+
+This repository is a focused demo, not a full production booking engine.
+
+Notable simplifications:
+
+- storage is local only
+- recurrence rules are intentionally simple
+- the preview shows one week at a time
+- tests cover sensible DST scenarios, not every ambiguous or invalid local time edge case
+
+Even with those simplifications, the project demonstrates the central rule that usually makes timezone code reliable:
+
+> interpret user input in the selected timezone, convert to UTC for persistence and comparison, and reconstruct local meaning from UTC plus timezone whenever the user needs to see or edit the booking again.
