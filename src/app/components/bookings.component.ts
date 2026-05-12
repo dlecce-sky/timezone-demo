@@ -3,7 +3,7 @@ import { FakeDbService } from '../services/fake-db.service';
 import { Booking, BookingJson, toBooking } from '../models/booking.model';
 
 @Component({
-  selector: 'app-list',
+  selector: 'app-bookings',
   template: `
     <h2>Bookings</h2>
     <ul>
@@ -14,7 +14,7 @@ import { Booking, BookingJson, toBooking } from '../models/booking.model';
   `,
   styles: ``,
 })
-export class ListComponent implements OnInit {
+export class BookingsComponent implements OnInit {
   readonly fakeDb = inject(FakeDbService);
 
   readonly bookings = signal<Booking[]>([]);

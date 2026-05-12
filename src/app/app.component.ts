@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { ListComponent } from './components/list.component';
+import { BookingsComponent } from './components/bookings.component';
 
 @Component({
   selector: 'app-root',
-  imports: [ListComponent],
+  imports: [BookingsComponent],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
+  styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {}
