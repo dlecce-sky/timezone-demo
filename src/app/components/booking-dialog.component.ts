@@ -3,11 +3,11 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { Booking, BookingFormControls } from '../models/booking.model';
 import { MatButtonModule } from '@angular/material/button';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { JsonPipe } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { DatetimePickerComponent, DatetimePickerToggleComponent } from '@sky-it-common/sky-ui';
+import { mapToUtcBooking } from '../utils/booking.utils';
 
 @Component({
   selector: 'app-booking-dialog',
@@ -17,7 +17,6 @@ import { DatetimePickerComponent, DatetimePickerToggleComponent } from '@sky-it-
     ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
-    JsonPipe,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -78,8 +77,6 @@ import { DatetimePickerComponent, DatetimePickerToggleComponent } from '@sky-it-
             </mat-select>
           </mat-form-field>
         </div>
-
-        <pre>{{ form.value | json }}</pre>
       }
     </mat-dialog-content>
 
@@ -127,7 +124,10 @@ export class BookingDialogComponent implements OnInit {
   }
 
   save() {
-    const booking = this.form()?.value;
-    this.dialogRef.close(booking);
+    const form = this.form();
+    if (form) {
+      const utcBooking = mapToUtcBooking(form.getRawValue());
+      this.dialogRef.close(utcBooking);
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { Booking } from '../models/booking.model';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,6 +7,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { BookingDialogComponent } from './booking-dialog.component';
 import { BookingDaysPipe } from '../pipes/booking-days.pipe';
+import { mapToZonedBooking } from '../utils/booking.utils';
 
 @Component({
   selector: 'app-bookings',
@@ -17,8 +18,8 @@ import { BookingDaysPipe } from '../pipes/booking-days.pipe';
     <section class="bookings">
       <h2>Bookings</h2>
 
-      @if (bookings().length) {
-        <table mat-table [dataSource]="bookings()">
+      @if (zonedBookings().length) {
+        <table mat-table [dataSource]="zonedBookings()">
           <!-- ID Column -->
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>ID</th>
@@ -103,6 +104,10 @@ export class BookingsComponent {
   readonly bookingCreated = output<Booking>();
   readonly bookingUpdated = output<Booking>();
   readonly bookingDeleted = output<string>();
+
+  readonly zonedBookings = computed<Booking[]>(() => {
+    return this.bookings().map(mapToZonedBooking);
+  });
 
   readonly dialogSettings = {
     minWidth: '1000px',

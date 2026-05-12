@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Booking, BookingJson, toBooking } from '../models/booking.model';
+import { Booking, BookingJson } from '../models/booking.model';
+import { toBooking } from '../utils/booking.utils';
 
 @Injectable({ providedIn: 'root' })
 export class FakeDbService {

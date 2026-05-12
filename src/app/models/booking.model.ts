@@ -15,14 +15,6 @@ export interface Booking extends Omit<BookingJson, 'from' | 'to'> {
   to: Date;
 }
 
-export function toBooking(bookingJson: BookingJson): Booking {
-  return {
-    ...bookingJson,
-    from: new Date(bookingJson.from),
-    to: new Date(bookingJson.to),
-  };
-}
-
 export interface BookingFormValue {
   id: string | null | undefined;
   from: Date | null | undefined;
